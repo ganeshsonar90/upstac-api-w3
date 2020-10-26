@@ -1,12 +1,16 @@
 package org.upgrad.upstac.testrequests;
 
+import com.oracle.tools.packager.Log;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.web.server.ResponseStatusException;
+import org.upgrad.upstac.config.security.UserLoggedInService;
 import org.upgrad.upstac.testrequests.lab.CreateLabResult;
 import org.upgrad.upstac.testrequests.lab.LabRequestController;
 import org.upgrad.upstac.testrequests.lab.LabResult;
@@ -15,6 +19,7 @@ import org.upgrad.upstac.users.User;
 import org.upgrad.upstac.users.models.Gender;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
@@ -32,32 +37,55 @@ class LabRequestControllerTest {
     LabRequestController labRequestController;
 
 
-
-
     @Autowired
     TestRequestQueryService testRequestQueryService;
+
+    @Mock
+    UserLoggedInService userLoggedInService;
+
+    @Autowired
+    private TestRequestUpdateService testRequestUpdateService;
+
+    @Mock
+    private TestRequestRepository testRequestRepository;
 
 
     @Test
     @WithUserDetails(value = "tester")
-    public void calling_assignForLabTest_with_valid_test_request_id_should_update_the_request_status(){
+    public void calling_assignForLabTest_with_valid_test_request_id_should_update_the_request_status() {
 
-        TestRequest testRequest = getTestRequestByStatus(RequestStatus.INITIATED);
+
+        User user = createUser();
+        CreateTestRequest createTestRequest = createTestRequest();
+
+        TestRequest mockedResponse = getTestRequestByStatus(RequestStatus.INITIATED);
+
+
+        //  TestRequest mockedResponse = getMockedResponseFrom(createTestRequest);
+        Mockito.when(userLoggedInService.getLoggedInUser()).thenReturn(user);
+        // Log.debug("request id"+mockedResponse.requestId);
+
+        Optional<TestRequest> testRequest = Optional.of(mockedResponse);
+
+        Mockito.when(testRequestRepository.findByRequestIdAndStatus(mockedResponse.requestId, RequestStatus.INITIATED)).thenReturn(testRequest);
+        // Mockito.when(testRequestUpdateService.assignForLabTest(mockedResponse.requestId, user)).thenReturn(mockedResponse);
+
+
+        // TestRequest testRequest = getTestRequestByStatus(RequestStatus.INITIATED);
         //Implement this method
 
 
         //Create another object of the TestRequest method and explicitly assign this object for Lab Test using assignForLabTest() method
         // from labRequestController class. Pass the request id of testRequest object.
-        TestRequest testRequest1 = labRequestController.assignForLabTest(testRequest.requestId);
-
+        TestRequest testRequest1 = labRequestController.assignForLabTest(mockedResponse.requestId);
 
 
         //Use assertThat() methods to perform the following two comparisons
         //  1. the request ids of both the objects created should be same
         //  2. the status of the second object should be equal to 'INITIATED'
 
-        assertEquals(testRequest.requestId,testRequest1.requestId);
-        assertEquals(testRequest.getStatus(),RequestStatus.INITIATED);
+        assertEquals(mockedResponse.requestId, testRequest1.requestId);
+        assertEquals(mockedResponse.getStatus(), RequestStatus.INITIATED);
 
 
         // make use of assertNotNull() method to make sure that the lab result of second object is not null
@@ -75,9 +103,9 @@ class LabRequestControllerTest {
 
     @Test
     @WithUserDetails(value = "tester")
-    public void calling_assignForLabTest_with_valid_test_request_id_should_throw_exception(){
+    public void calling_assignForLabTest_with_valid_test_request_id_should_throw_exception() {
 
-        Long InvalidRequestId= -34L;
+        Long InvalidRequestId = -34L;
 
         //Implement this method
 
@@ -85,7 +113,7 @@ class LabRequestControllerTest {
         // Create an object of ResponseStatusException . Use assertThrows() method and pass assignForLabTest() method
         // of labRequestController with InvalidRequestId as Id
 
-        ResponseStatusException result = assertThrows(ResponseStatusException.class,()->{
+        ResponseStatusException result = assertThrows(ResponseStatusException.class, () -> {
 
             TestRequest testRequest = labRequestController.assignForLabTest(InvalidRequestId);
         });
@@ -94,26 +122,28 @@ class LabRequestControllerTest {
         //Use assertThat() method to perform the following comparison
         //  the exception message should be contain the string "Invalid ID"
 
-        assertThat(result.getMessage(),containsString("Invalid ID"));
-
-
+        assertThat(result.getMessage(), containsString("Invalid ID"));
 
 
     }
 
     @Test
     @WithUserDetails(value = "tester")
-    public void calling_updateLabTest_with_valid_test_request_id_should_update_the_request_status_and_update_test_request_details(){
+    public void calling_updateLabTest_with_valid_test_request_id_should_update_the_request_status_and_update_test_request_details() {
 
         TestRequest testRequest = getTestRequestByStatus(RequestStatus.LAB_TEST_IN_PROGRESS);
 
         //Implement this method
         //Create an object of CreateLabResult and call getCreateLabResult() to create the object. Pass the above created object as the parameter
 
-        CreateLabResult createLabResult=getCreateLabResult(testRequest);
+        CreateLabResult createLabResult = getCreateLabResult(testRequest);
 
         //Create another object of the TestRequest method and explicitly update the status of this object
         // to be 'LAB_TEST_IN_PROGRESS'. Make use of updateLabTest() method from labRequestController class (Pass the previously created two objects as parameters)
+
+        User user = createUser();
+        Mockito.when(userLoggedInService.getLoggedInUser()).thenReturn(user);
+
 
         TestRequest testRequest1 = labRequestController.updateLabTest(testRequest.requestId, createLabResult);
         testRequest1.setStatus(RequestStatus.LAB_TEST_IN_PROGRESS);
@@ -123,12 +153,9 @@ class LabRequestControllerTest {
         //  2. the status of the second object should be equal to 'LAB_TEST_COMPLETED'
         // 3. the results of both the objects created should be same. Make use of getLabResult() method to get the results.
 
-        assertEquals(testRequest.requestId,testRequest1.requestId);
-        assertEquals(testRequest1.getStatus(),RequestStatus.LAB_TEST_COMPLETED);
-        assertEquals(testRequest.getLabResult(),testRequest1.getLabResult());
-
-
-
+        assertEquals(testRequest.requestId, testRequest1.requestId);
+        assertEquals(testRequest1.getStatus(), RequestStatus.LAB_TEST_COMPLETED);
+        assertEquals(testRequest.getLabResult(), testRequest1.getLabResult());
 
 
     }
@@ -136,10 +163,10 @@ class LabRequestControllerTest {
 
     @Test
     @WithUserDetails(value = "tester")
-    public void calling_updateLabTest_with_invalid_test_request_id_should_throw_exception(){
+    public void calling_updateLabTest_with_invalid_test_request_id_should_throw_exception() {
 
 
-        Long InvalidRequestId= -34L;
+        Long InvalidRequestId = -34L;
 
         TestRequest testRequest = getTestRequestByStatus(RequestStatus.LAB_TEST_IN_PROGRESS);
 
@@ -147,31 +174,30 @@ class LabRequestControllerTest {
         //Implement this method
 
         //Create an object of CreateLabResult and call getCreateLabResult() to create the object. Pass the above created object as the parameter
-        CreateLabResult createLabResult=getCreateLabResult(testRequest);
-
+        CreateLabResult createLabResult = getCreateLabResult(testRequest);
 
 
         // Create an object of ResponseStatusException . Use assertThrows() method and pass updateLabTest() method
         // of labRequestController with a negative long value as Id and the above created object as second parameter
         //Refer to the TestRequestControllerTest to check how to use assertThrows() method
 
-        ResponseStatusException result = assertThrows(ResponseStatusException.class,()->{
+        ResponseStatusException result = assertThrows(ResponseStatusException.class, () -> {
 
-            labRequestController.updateLabTest(InvalidRequestId,createLabResult);
+            labRequestController.updateLabTest(InvalidRequestId, createLabResult);
         });
 
 
         //Use assertThat() method to perform the following comparison
         //  the exception message should be contain the string "Invalid ID"
 
-        assertThat(result.getMessage(),containsString("Invalid ID"));
+        assertThat(result.getMessage(), containsString("Invalid ID"));
 
 
     }
 
     @Test
     @WithUserDetails(value = "tester")
-    public void calling_updateLabTest_with_invalid_empty_status_should_throw_exception(){
+    public void calling_updateLabTest_with_invalid_empty_status_should_throw_exception() {
 
         TestRequest testRequest = getTestRequestByStatus(RequestStatus.LAB_TEST_IN_PROGRESS);
 
@@ -180,7 +206,7 @@ class LabRequestControllerTest {
         //Create an object of CreateLabResult and call getCreateLabResult() to create the object. Pass the above created object as the parameter
         // Set the result of the above created object to null.
 
-        CreateLabResult createLabResult=getCreateLabResult(testRequest);
+        CreateLabResult createLabResult = getCreateLabResult(testRequest);
         createLabResult.setResult(null);
 
 
@@ -189,15 +215,15 @@ class LabRequestControllerTest {
         //Refer to the TestRequestControllerTest to check how to use assertThrows() method
 
 
-        ResponseStatusException result = assertThrows(ResponseStatusException.class,()->{
+        ResponseStatusException result = assertThrows(ResponseStatusException.class, () -> {
 
-            labRequestController.updateLabTest(testRequest.requestId,createLabResult);
+            labRequestController.updateLabTest(testRequest.requestId, createLabResult);
         });
 
         //Use assertThat() method to perform the following comparison
         //  the exception message should be contain the string "ConstraintViolationException"
 
-        assertThat(result.getMessage(),containsString("ConstraintViolationException"));
+        assertThat(result.getMessage(), containsString("ConstraintViolationException"));
 
 
     }
@@ -207,7 +233,7 @@ class LabRequestControllerTest {
         //Create an object of CreateLabResult and set all the values
         // Return the object
 
-       // LabResult labResult = testRequest.getLabResult();
+        // LabResult labResult = testRequest.getLabResult();
 
         CreateLabResult createLabResult = new CreateLabResult();
         createLabResult.setBloodPressure("labResult.getBloodPressure()");
@@ -232,9 +258,11 @@ class LabRequestControllerTest {
         createTestRequest.setPinCode(716768);
         return createTestRequest;
     }
+
     public TestRequest getMockedResponseFrom(CreateTestRequest createTestRequest) {
         TestRequest testRequest = new TestRequest();
 
+        testRequest.setRequestId(1L);
         testRequest.setName(createTestRequest.getName());
         testRequest.setCreated(LocalDate.now());
         testRequest.setStatus(RequestStatus.INITIATED);
