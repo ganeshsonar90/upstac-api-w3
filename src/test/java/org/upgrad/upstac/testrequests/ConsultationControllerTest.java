@@ -153,19 +153,31 @@ class ConsultationControllerTest {
     @WithUserDetails(value = "doctor")
     public void calling_updateConsultation_with_invalid_test_request_id_should_throw_exception(){
 
+        Long InvalidRequestId= -34L;
+
         TestRequest testRequest = getTestRequestByStatus(RequestStatus.DIAGNOSIS_IN_PROCESS);
 
         //Implement this method
 
         //Create an object of CreateConsultationRequest and call getCreateConsultationRequest() to create the object. Pass the above created object as the parameter
 
+        CreateConsultationRequest createConsultationRequest=getCreateConsultationRequest(testRequest);
+
         // Create an object of ResponseStatusException . Use assertThrows() method and pass updateConsultation() method
         // of consultationController with a negative long value as Id and the above created object as second parameter
         //Refer to the TestRequestControllerTest to check how to use assertThrows() method
 
+        ResponseStatusException result = assertThrows(ResponseStatusException.class,()->{
+
+            TestRequest testRequest1 = consultationController.updateConsultation(InvalidRequestId,createConsultationRequest);
+        });
+
 
         //Use assertThat() method to perform the following comparison
         //  the exception message should be contain the string "Invalid ID"
+
+        assertThat(result.getMessage(),containsString("Invalid ID"));
+
 
     }
 
