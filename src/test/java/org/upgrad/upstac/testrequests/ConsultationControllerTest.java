@@ -192,10 +192,17 @@ class ConsultationControllerTest {
         //Create an object of CreateConsultationRequest and call getCreateConsultationRequest() to create the object. Pass the above created object as the parameter
         // Set the suggestion of the above created object to null.
 
+        CreateConsultationRequest createConsultationRequest=getCreateConsultationRequest(testRequest);
+
         // Create an object of ResponseStatusException . Use assertThrows() method and pass updateConsultation() method
         // of consultationController with request Id of the testRequest object and the above created object as second parameter
         //Refer to the TestRequestControllerTest to check how to use assertThrows() method
 
+
+        ResponseStatusException result = assertThrows(ResponseStatusException.class,()->{
+
+            TestRequest testRequest1 = consultationController.updateConsultation(testRequest.requestId,createConsultationRequest);
+        });
 
     }
 
